@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PPE 탈의 시뮬레이션 & 자가점검</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap">
+<style>
+:root{
+  --bg:#ffffff; --surface:#ffffff; --ink:#111111; --muted:#222222; --line:#c9d6d8;
+  --accent:#0a7c80; --accent-soft:#e2f3f3; --on-accent:#ffffff;
+  --ok:#0a7c80; --ok-soft:#e2f3f3;
+  --bad:#d11a2a; --bad-soft:#fdecee;
+  color-scheme: light;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:'Noto Sans KR',system-ui,-apple-system,'Malgun Gothic',sans-serif;line-height:1.6}
+main{max-width:720px;margin:0 auto;padding:32px 20px 64px}
+h1{font-size:1.6rem;margin:0 0 6px;letter-spacing:-.02em}
+.lead{color:var(--muted);margin:0 0 24px;font-size:.95rem}
+.types{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:8px}
+.types button{font:inherit;text-align:left;padding:12px 14px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);border-radius:8px;cursor:pointer}
+.types button b{display:block;font-size:1rem}
+.types button span{display:block;font-size:.8rem;color:var(--muted)}
+.types button[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
+button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.bar{display:flex;align-items:center;gap:12px;margin:22px 0 14px;font-size:.9rem;color:var(--muted)}
+.track{flex:1;height:6px;background:var(--line);border-radius:3px;overflow:hidden}
+.fill{height:100%;width:0;background:var(--accent);transition:width .3s}
+.q{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px 18px;margin-bottom:12px;border-left:5px solid var(--line)}
+.q.ok{border-left-color:var(--ok)}
+.q.bad{border-left-color:var(--bad)}
+.q .step{font-size:.82rem;color:var(--muted)}
+.q .text{font-weight:500;margin:2px 0 12px}
+.ans{display:flex;gap:8px}
+.ans button{font:inherit;font-weight:500;padding:8px 22px;border-radius:6px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
+.ans button:hover:not(:disabled){border-color:var(--accent)}
+.ans button:disabled{cursor:default;opacity:.55}
+.ans button.picked{opacity:1;border-width:2px}
+.ans button.picked.yes{border-color:var(--ok);background:var(--ok-soft)}
+.ans button.picked.no{border-color:var(--bad);background:var(--bad-soft)}
+.fix{margin-top:12px;background:var(--bad-soft);border:1.5px solid var(--bad);color:var(--ink);border-radius:8px;padding:12px 14px;animation:pop .22s ease-out}
+.fix strong{color:var(--bad);display:block;margin-bottom:2px}
+.good{margin-top:10px;color:var(--ok);font-size:.9rem;font-weight:500}
+@keyframes pop{from{transform:scale(.97);opacity:0}to{transform:none;opacity:1}}
+@media (prefers-reduced-motion:reduce){.fix{animation:none}.fill{transition:none}}
+.result{display:none;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px;margin-top:20px}
+.result.show{display:block}
+.result h2{margin:0 0 4px;font-size:1.2rem}
+.result p{margin:0 0 14px;color:var(--muted)}
+.retry{font:inherit;font-weight:700;padding:10px 18px;border:0;border-radius:6px;background:var(--accent);color:var(--surface);cursor:pointer}
+
+/* ===== 팀 공통 컬러 ===== */
+:root{--air:#EF4444;--droplet:#F59E0B;--contact:#F97316;--standard:#3B82F6}
+main{--tc:var(--accent)}
+nav.top{background:var(--surface);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+nav.top .in{max-width:960px;margin:0 auto;padding:10px 20px;display:flex;flex-wrap:wrap;align-items:center;gap:6px 18px}
+nav.top .brand{font-weight:700;margin-right:auto}
+nav.top a{color:var(--muted);text-decoration:none;font-size:.9rem;padding:4px 0;border-bottom:2px solid transparent}
+nav.top a[aria-current="page"]{color:var(--ink);font-weight:700;border-bottom-color:var(--tc,var(--contact))}
+nav.top a:hover{color:var(--ink)}
+.types button[aria-pressed="true"]{border-color:var(--tc);background:color-mix(in srgb,var(--tc) 14%,var(--surface))}
+.types button .dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;box-shadow:0 0 0 2px #fff}
+.fill{background:var(--tc)}
+.retry{background:var(--tc);color:#fff}
+.note{font-size:.85rem;color:var(--muted);margin:0 0 4px}
+
+/* ===== 컬러 규칙: 포인트=청록 / 청록 위 글씨=흰색 / 중요=빨강 / 그 외=검정 ===== */
+body{background:#fff;color:#111}
+.lead,.q .step,.note,.bar,.types button span{color:#222}
+nav.top .brand{color:var(--accent)}
+nav.top a{color:#111}
+nav.top a[aria-current="page"]{border-bottom-color:var(--accent)}
+h1{color:#111}
+.types button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+.types button[aria-pressed="true"] span{color:#fff}
+.ans button.picked.yes{background:var(--accent);border-color:var(--accent);color:#fff}
+.ans button.picked.no{background:var(--bad);border-color:var(--bad);color:#fff}
+.q.bad .step{color:var(--bad);font-weight:700}
+.q.bad{border-left-color:var(--bad)}
+.good{color:var(--accent)}
+.fix{background:var(--bad-soft);border:2px solid var(--bad);color:#111}
+.fix strong{color:var(--bad)}
+.fill{background:var(--accent)}
+.retry{background:var(--accent);color:#fff}
+.result h2{color:#111}
+.result p{color:#222}
+</style>
+</head>
+<body>
+<nav class="top"><div class="in">
+  <span class="brand">🏥 InfectionGuard</span>
+  <a href="index.html">홈(대시보드)</a>
+  <a href="chatbot.html">AI 선별 챗봇</a>
+  <a href="protocol.html">격리 프로토콜</a>
+  <a href="ppe_quiz.html" aria-current="page">PPE 탈의 점검</a>
+  <a href="history.html">판정 이력</a>
+</div></nav>
+<main>
+  <h1>PPE 탈의 순서 자가점검</h1>
+  <p class="lead">격리 유형을 고르고, 병실에서 나올 때 실제로 지킨 항목에 ‘예/아니오’로 답하세요. ‘아니오’를 누르면 바로 교정 내용이 나옵니다.</p>
+
+  <div class="types" id="types" role="group" aria-label="격리 유형"></div>
+
+  <div class="bar"><span id="progress">0 / 5</span><div class="track"><div class="fill" id="fill"></div></div></div>
+  <div id="list"></div>
+
+  <section class="result" id="result" aria-live="polite">
+    <h2 id="score"></h2>
+    <p id="msg"></p>
+    <button class="retry" id="retry">다시 점검하기</button>
+  </section>
+</main>
+
+<script>
+/* ===== 데이터: Python 코드의 ppe_questions / rationale 문구와 동일하게 맞춰 수정하세요 ===== */
+const COMMON = {
+  gloves:  {q:"장갑을 가장 먼저 벗었나요?", why:"장갑은 가장 오염도가 높으므로 가장 먼저 벗어야 합니다."},
+  gown:    {q:"가운은 겉면이 안쪽으로 말리도록 벗었나요?", why:"가운의 겉면은 오염되어 있으므로 안쪽으로 말아 접어 벗어야 오염이 퍼지지 않습니다."},
+  hand:    {q:"PPE를 벗은 직후 손위생을 했나요?", why:"탈의 과정에서 손이 오염될 수 있으므로 벗은 직후 반드시 손위생을 해야 합니다."},
+  eye:     {q:"고글·안면보호구는 끈 부분만 잡고 벗었나요?", why:"고글·안면보호구의 앞면은 오염되어 있으므로 깨끗한 끈 부분만 잡고 벗어야 합니다."},
+  exit:    {q:"병실을 나온 뒤 마지막으로 다시 손위생을 했나요?", why:"모든 PPE를 벗은 뒤에도 마지막 손위생으로 남은 오염을 제거해야 합니다."}
+};
+const TYPES = {
+  "접촉주의": {cvar:"--contact", emoji:"🟠", sub:"MRSA·VRE 등", color:"#F97316", items:[
+    COMMON.gloves, COMMON.gown, COMMON.hand,
+    {q:"사용한 청진기·체온계 등 환자 전용 기구를 병실 안에 두거나 소독했나요?", why:"공용으로 쓰는 기구는 병실 밖으로 가져가면 다른 환자에게 전파될 수 있으므로 전용으로 쓰거나 사용 후 소독해야 합니다."},
+    COMMON.exit]},
+  "비말주의": {cvar:"--droplet", emoji:"🟡", sub:"인플루엔자 등", color:"#F59E0B", items:[
+    COMMON.gloves, COMMON.eye, COMMON.gown, COMMON.hand,
+    {q:"수술용 마스크는 병실을 나온 뒤 끈만 잡고 벗었나요?", why:"마스크 앞면은 오염되어 있으므로 병실 밖에서 끈만 잡고 벗어 바로 폐기해야 합니다."}]},
+  "공기주의": {cvar:"--air", emoji:"🔴", sub:"결핵·홍역·수두", color:"#EF4444", items:[
+    COMMON.gloves, COMMON.gown,
+    {q:"병실 문을 닫은 뒤에 병실 밖(전실)에서 N95 마스크를 벗었나요?", why:"N95 마스크는 병실 밖에서 벗어야 합니다. 병실 안에서 벗으면 공기 중 병원체를 흡입할 수 있습니다."},
+    {q:"N95 마스크는 앞면을 만지지 않고 끈만 잡고 벗었나요?", why:"마스크 앞면에는 병원체가 걸러져 있으므로 만지지 말고 아래·위 끈만 잡고 벗어야 합니다."},
+    COMMON.hand]},
+  "C.difficile/노로": {cvar:"--contact", emoji:"🟠", sub:"아포·바이러스성 장염", color:"#F97316", items:[
+    COMMON.gloves, COMMON.gown,
+    {q:"PPE를 벗은 뒤 손위생을 ‘비누와 흐르는 물’로 했나요?", why:"C. difficile 아포와 노로바이러스는 알코올 손소독제로 잘 제거되지 않으므로 비누와 흐르는 물로 씻어야 합니다."},
+    {q:"환자 주변 표면·기구를 염소계 소독제로 소독했나요?", why:"아포와 노로바이러스는 환경에서 오래 생존하므로 염소계 소독제로 소독해야 합니다."},
+    COMMON.exit]}
+};
+
+let current = null, answered = 0, correct = 0;
+const $ = id => document.getElementById(id);
+
+function buildTypes(){
+  const box = $("types");
+  Object.keys(TYPES).forEach(name => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.setAttribute("aria-pressed","false");
+    b.dataset.name = name;
+    b.innerHTML = '<b><i class="dot" style="background:var(' + TYPES[name].cvar + ')"></i>' + name + "</b><span>" + TYPES[name].sub + "</span>";
+    b.onclick = () => select(name);
+    box.appendChild(b);
+  });
+}
+
+function select(name){
+  current = name; answered = 0; correct = 0;
+  [...$("types").children].forEach(b => b.setAttribute("aria-pressed", b.dataset.name === name));
+  $("result").classList.remove("show");
+  const list = $("list"); list.innerHTML = "";
+  TYPES[name].items.forEach((it, i) => list.appendChild(card(it, i)));
+  updateBar();
+}
+
+function card(it, i){
+  const d = document.createElement("div");
+  d.className = "q";
+  d.innerHTML = '<div class="step">' + (i+1) + '번째 점검</div><div class="text"></div>' +
+    '<div class="ans"><button type="button" class="yes">예</button><button type="button" class="no">아니오</button></div><div class="fb"></div>';
+  d.querySelector(".text").textContent = it.q;
+  const yes = d.querySelector(".yes"), no = d.querySelector(".no"), fb = d.querySelector(".fb");
+  function pick(isYes){
+    yes.disabled = no.disabled = true;
+    (isYes ? yes : no).classList.add("picked");
+    answered++;
+    if(isYes){
+      correct++; d.classList.add("ok");
+      fb.innerHTML = '<div class="good">잘 지키셨어요.</div>';
+    } else {
+      d.classList.add("bad");
+      const f = document.createElement("div");
+      f.className = "fix"; f.setAttribute("role","alert");
+      const s = document.createElement("strong"); s.textContent = "교정이 필요해요";
+      f.appendChild(s); f.appendChild(document.createTextNode(it.why));
+      fb.appendChild(f);
+    }
+    updateBar();
+  }
+  yes.onclick = () => pick(true);
+  no.onclick = () => pick(false);
+  return d;
+}
+
+function updateBar(){
+  const total = current ? TYPES[current].items.length : 5;
+  $("progress").textContent = answered + " / " + total;
+  $("fill").style.width = (answered / total * 100) + "%";
+  if(current && answered === total){
+    $("score").textContent = total + "개 중 " + correct + "개를 지켰어요";
+    $("msg").textContent = correct === total
+      ? "순서를 모두 정확히 알고 있습니다."
+      : "빨간색 교정 카드를 다시 읽고, 틀린 항목을 중심으로 한 번 더 점검해 보세요.";
+    $("result").classList.add("show");
+  }
+}
+
+$("retry").onclick = () => select(current);
+buildTypes();
+select("접촉주의");
+</script>
+</body>
+</html>
